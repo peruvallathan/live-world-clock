@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>World Time — Live Wallpaper</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@300;400;700&family=Share+Tech+Mono&display=swap');
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:#040d18;}
+#wrap{position:relative;width:100vw;height:100vh;}
+#c-stars,#c-map,#c-lights{position:absolute;top:0;left:0;width:100%;height:100%;}
+#ui{position:absolute;inset:0;pointer-events:none;}
+
+/* ── Header: sits top-center, compact, never overlaps badge ── */
+#header{
+  position:absolute;
+  top:0; left:50%; transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 24px 10px;
+  gap:3px;
+  background:rgba(4,10,20,0.55);
+  border-bottom-left-radius:14px;
+  border-bottom-right-radius:14px;
+  border:1px solid rgba(255,200,50,0.12);
+  border-top:none;
+}
+#chennai-label{
+  font-family:'Share Tech Mono','Courier New',monospace;
+  font-size:clamp(9px,.75vw,12px);
+  letter-spacing:.5em;text-transform:uppercase;
+  color:rgba(255,210,80,.75);
+  white-space:nowrap;
+}
+#seg-chennai{display:block;image-rendering:pixelated;}
+#chennai-date{
+  font-family:'Share Tech Mono','Courier New',monospace;
+  font-size:clamp(9px,.75vw,12px);
+  letter-spacing:.22em;
+  color:rgba(255,220,115,.55);
+  white-space:nowrap;
+}
+#utc-row{display:flex;align-items:center;gap:8px;margin-top:1px;}
+#utc-label{
+  font-family:'Share Tech Mono','Courier New',monospace;
+  font-size:clamp(8px,.65vw,11px);letter-spacing:.45em;text-transform:uppercase;
+  color:rgba(140,205,255,.50);
+}
+#seg-utc{display:block;image-rendering:pixelated;}
+
+#sun-badge{position:absolute;top:14px;right:22px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.badge-lbl{font-family:'Share Tech Mono','Courier New',monospace;font-size:clamp(10px,.82vw,13px);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,225,75,.65);}
+.badge-val{font-family:'Orbitron','Courier New',monospace;font-weight:300;font-size:clamp(13px,1.05vw,16px);letter-spacing:.12em;color:rgba(255,235,92,.95);text-shadow:0 0 13px rgba(255,198,32,.70);}
+
+#legend{position:absolute;bottom:195px;left:18px;display:flex;flex-direction:column;gap:7px;}
+.leg{display:flex;align-items:center;gap:9px;font-family:'Share Tech Mono','Courier New',monospace;font-size:clamp(10px,.85vw,13px);letter-spacing:.22em;text-transform:uppercase;color:rgba(220,238,255,.78);}
+.leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+
+#clocks-bar{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(to top,rgba(3,8,18,.98) 0%,rgba(4,10,21,.90) 55%,transparent 100%);
+  padding:16px 10px 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+}
+.clock-row{
+  display:flex;
+  flex-direction:row;
+  justify-content:center;
+  gap:5px;
+  flex-wrap:nowrap;
+  width:100%;
+}
+.clock-card{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;border-radius:9px;width:108px;height:76px;flex-shrink:0;flex-grow:0;border:1px solid transparent;transition:background .9s,border-color .9s;position:relative;overflow:hidden;}
+.clock-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .9s;}
+.clock-card.sn{background:rgba(4,9,32,.90);border-color:rgba(50,112,245,.30);}
+.clock-card.sd{background:rgba(14,30,8,.88);border-color:rgba(75,218,65,.30);}
+.clock-card.se{background:rgba(46,14,3,.90);border-color:rgba(255,90,16,.35);}
+.clock-card.sm{background:rgba(44,22,3,.90);border-color:rgba(255,155,26,.32);}
+.clock-card.sn::before{background:linear-gradient(90deg,transparent,rgba(55,138,255,.42),transparent);opacity:1;}
+.clock-card.sd::before{background:linear-gradient(90deg,transparent,rgba(95,232,72,.34),transparent);opacity:1;}
+.clock-card.se::before{background:linear-gradient(90deg,transparent,rgba(255,85,16,.40),transparent);opacity:1;}
+.clock-card.sm::before{background:linear-gradient(90deg,transparent,rgba(255,155,26,.34),transparent);opacity:1;}
+.c-city{font-family:'Share Tech Mono','Courier New',monospace;font-size:clamp(9px,.75vw,11px);letter-spacing:.28em;text-transform:uppercase;color:rgba(220,238,255,.68);margin-bottom:3px;white-space:nowrap;}
+.c-time{font-family:'Orbitron','Courier New',monospace;font-weight:400;font-size:clamp(15px,1.4vw,19px);letter-spacing:.04em;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .9s,text-shadow .9s;}
+.sn .c-time{color:#6ab4ff;text-shadow:0 0 14px rgba(70,158,255,.68);}
+.sd .c-time{color:#6ee640;text-shadow:0 0 14px rgba(95,232,55,.65);}
+.se .c-time{color:#ff6a12;text-shadow:0 0 14px rgba(255,80,8,.72);}
+.sm .c-time{color:#ffb02e;text-shadow:0 0 14px rgba(255,152,18,.68);}
+.c-offset{font-family:'Share Tech Mono','Courier New',monospace;font-size:clamp(9px,.68vw,11px);letter-spacing:.08em;color:rgba(200,222,255,.50);margin-top:3px;}
+.c-icon{font-size:clamp(11px,.95vw,14px);margin-top:2px;line-height:1;}
+
+#loading{position:absolute;inset:0;background:#040d18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:100;transition:opacity .8s;}
+#loading h1{font-family:'Orbitron','Courier New',monospace;font-weight:300;font-size:22px;letter-spacing:.4em;color:rgba(140,210,255,.8);text-transform:uppercase;}
+#load-bar-wrap{width:260px;height:2px;background:rgba(60,120,200,.15);border-radius:2px;}
+#load-bar{height:2px;background:linear-gradient(90deg,#3a8fff,#a0d4ff);border-radius:2px;width:0%;transition:width .4s ease;}
+#load-status{font-family:'Share Tech Mono','Courier New',monospace;font-size:11px;letter-spacing:.3em;color:rgba(100,160,255,.45);text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c-stars"></canvas>
+  <canvas id="c-map"></canvas>
+  <canvas id="c-lights"></canvas>
+  <!-- Header is absolutely positioned independently -->
+  <div id="header">
+    <div id="chennai-label">Detecting timezone…</div>
+    <canvas id="seg-chennai"></canvas>
+    <div id="chennai-date">—</div>
+    <div id="utc-row">
+      <span id="utc-label">UTC</span>
+      <canvas id="seg-utc"></canvas>
+    </div>
+  </div>
+
+  <div id="ui">
+    <div id="sun-badge">
+      <div class="badge-lbl">☀ Subsolar Point</div>
+      <div class="badge-val" id="sun-pos">—</div>
+    </div>
+    <div id="legend">
+      <div class="leg"><div class="leg-dot" style="background:#4ade80;box-shadow:0 0 8px #4ade80"></div>Daytime</div>
+      <div class="leg"><div class="leg-dot" style="background:#fb923c;box-shadow:0 0 8px #fb923c"></div>Evening</div>
+      <div class="leg"><div class="leg-dot" style="background:#fbbf24;box-shadow:0 0 8px #fbbf24"></div>Morning</div>
+      <div class="leg"><div class="leg-dot" style="background:#1e3a8a;box-shadow:0 0 8px #3b82f6"></div>Night</div>
+      <div class="leg"><div class="leg-dot" style="background:#fde68a;box-shadow:0 0 9px #fbbf24"></div>City Lights</div>
+    </div>
+  </div>
+  <!-- clocks-bar is a direct child of #wrap — absolutely pinned to bottom, never moves -->
+  <div id="clocks-bar"></div>
+  <div id="loading">
+    <h1>World Time</h1>
+    <div id="load-bar-wrap"><div id="load-bar"></div></div>
+    <div id="load-status">Loading map data…</div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// LOCAL TIMEZONE DETECTION
+// Reads the OS timezone automatically — no hardcoding
+// ═══════════════════════════════════════════
+const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Approximate lon/lat for the detected timezone
+// Used to compute local sky state for segment display color
+// Maps IANA timezone → [lon, lat]
+const TZ_COORDS = {
+  'Asia/Kolkata':[80.27,13.08],'Asia/Calcutta':[80.27,13.08],
+  'America/New_York':[-74.00,40.71],'America/Chicago':[-87.63,41.88],
+  'America/Denver':[-104.99,39.74],'America/Los_Angeles':[-118.24,34.05],
+  'America/Phoenix':[-112.07,33.45],'America/Anchorage':[-149.90,61.22],
+  'Pacific/Honolulu':[-157.85,21.31],'America/Toronto':[-79.39,43.65],
+  'America/Vancouver':[-123.12,49.28],'America/Sao_Paulo':[-46.63,-23.55],
+  'America/Buenos_Aires':[-58.37,-34.61],'America/Santiago':[-70.67,-33.45],
+  'America/Bogota':[-74.08,4.71],'America/Lima':[-77.03,-12.05],
+  'America/Mexico_City':[-99.13,19.43],'America/Caracas':[-66.92,10.48],
+  'Europe/London':[-0.12,51.51],'Europe/Paris':[2.35,48.85],
+  'Europe/Berlin':[13.38,52.52],'Europe/Madrid':[-3.70,40.42],
+  'Europe/Rome':[12.49,41.89],'Europe/Amsterdam':[4.90,52.37],
+  'Europe/Brussels':[4.35,50.85],'Europe/Vienna':[16.37,48.21],
+  'Europe/Warsaw':[21.01,52.23],'Europe/Budapest':[19.04,47.50],
+  'Europe/Prague':[14.44,50.08],'Europe/Stockholm':[18.07,59.33],
+  'Europe/Oslo':[10.75,59.91],'Europe/Copenhagen':[12.57,55.68],
+  'Europe/Helsinki':[24.94,60.16],'Europe/Athens':[23.73,37.97],
+  'Europe/Lisbon':[-9.14,38.71],'Europe/Moscow':[37.62,55.75],
+  'Europe/Istanbul':[28.95,41.01],'Europe/Kyiv':[30.52,50.45],
+  'Africa/Cairo':[31.24,30.06],'Africa/Nairobi':[36.82,-1.29],
+  'Africa/Johannesburg':[28.04,-26.20],'Africa/Lagos':[3.38,6.45],
+  'Africa/Accra':[-0.20,5.56],'Africa/Addis_Ababa':[38.74,9.02],
+  'Africa/Casablanca':[-7.59,33.59],'Africa/Khartoum':[32.53,15.55],
+  'Asia/Dubai':[55.30,25.20],'Asia/Riyadh':[46.68,24.69],
+  'Asia/Baghdad':[44.38,33.34],'Asia/Tehran':[51.42,35.69],
+  'Asia/Karachi':[67.01,24.86],'Asia/Dhaka':[90.41,23.72],
+  'Asia/Colombo':[79.97,6.92],'Asia/Kathmandu':[85.31,27.70],
+  'Asia/Bangkok':[100.52,13.75],'Asia/Singapore':[103.82,1.35],
+  'Asia/Kuala_Lumpur':[101.69,3.14],'Asia/Jakarta':[106.84,-6.21],
+  'Asia/Hong_Kong':[114.06,22.54],'Asia/Shanghai':[121.47,31.23],
+  'Asia/Taipei':[121.52,25.04],'Asia/Seoul':[126.98,37.57],
+  'Asia/Tokyo':[139.69,35.68],'Asia/Manila':[120.97,14.60],
+  'Asia/Yangon':[96.16,16.87],'Asia/Ho_Chi_Minh':[106.66,10.82],
+  'Asia/Phnom_Penh':[104.92,11.55],'Asia/Almaty':[76.95,43.25],
+  'Asia/Tashkent':[69.29,41.30],'Asia/Baku':[49.87,40.41],
+  'Asia/Yerevan':[44.51,40.18],'Asia/Tbilisi':[44.83,41.69],
+  'Australia/Sydney':[151.21,-33.87],'Australia/Melbourne':[144.96,-37.81],
+  'Australia/Brisbane':[153.03,-27.47],'Australia/Perth':[115.86,-31.95],
+  'Australia/Adelaide':[138.60,-34.93],'Pacific/Auckland':[174.76,-36.86],
+  'Pacific/Fiji':[178.44,-18.14],'Pacific/Guam':[144.74,13.47],
+};
+
+// Get coordinates for local timezone, fallback to lon:0 lat:0 (Greenwich)
+const _localCoords = TZ_COORDS[LOCAL_TZ] || [0, 0];
+const LOCAL_LON = _localCoords[0];
+const LOCAL_LAT = _localCoords[1];
+
+// Build a human-readable label: "Tokyo · Japan Standard Time (JST)"
+function buildLocalLabel() {
+  try {
+    // Get timezone offset string e.g. "GMT+9"
+    const offsetStr = new Intl.DateTimeFormat('en', {
+      timeZone: LOCAL_TZ, timeZoneName: 'short'
+    }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || '';
+
+    // Get long timezone name e.g. "Japan Standard Time"
+    const longName = new Intl.DateTimeFormat('en', {
+      timeZone: LOCAL_TZ, timeZoneName: 'long'
+    }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || LOCAL_TZ;
+
+    // City name from IANA tz string e.g. "Asia/Tokyo" → "Tokyo"
+    const city = LOCAL_TZ.split('/').pop().replace(/_/g,' ');
+
+    return `${city} · ${longName} (${offsetStr})`;
+  } catch {
+    return LOCAL_TZ;
+  }
+}
+
+// Set the label once on load
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('chennai-label');
+  if (el) el.textContent = buildLocalLabel();
+});
+
+// ═══════════════════════════════════════════
+// CITIES — Chennai only in header, not bar
+// ═══════════════════════════════════════════
+const CITIES = [
+  {name:'Los Angeles', tz:'America/Los_Angeles', lon:-118.24, lat:34.05},
+  {name:'New York',    tz:'America/New_York',    lon:-74.00,  lat:40.71},
+  {name:'São Paulo',   tz:'America/Sao_Paulo',   lon:-46.63,  lat:-23.55},
+  {name:'London',      tz:'Europe/London',       lon:-0.12,   lat:51.51},
+  {name:'Paris',       tz:'Europe/Paris',        lon:2.35,    lat:48.85},
+  {name:'Cairo',       tz:'Africa/Cairo',        lon:31.24,   lat:30.06},
+  {name:'Moscow',      tz:'Europe/Moscow',       lon:37.62,   lat:55.75},
+  {name:'Dubai',       tz:'Asia/Dubai',          lon:55.30,   lat:25.20},
+  {name:'Singapore',   tz:'Asia/Singapore',      lon:103.82,  lat:1.35},
+  {name:'Tokyo',       tz:'Asia/Tokyo',          lon:139.69,  lat:35.68},
+  {name:'Sydney',      tz:'Australia/Sydney',    lon:151.21,  lat:-33.87},
+  {name:'Auckland',    tz:'Pacific/Auckland',    lon:174.76,  lat:-36.86},
+];
+
+// City lights [lon, lat, intensity, glow-size]
+const LIGHTS = [
+  // ── North America ──────────────────────────────────────────
+  [-118.24,34.05,1.0,5.5],  // Los Angeles
+  [-87.63,41.88,.90,4.5],   // Chicago
+  [-74.00,40.71,1.0,5.5],   // New York
+  [-71.06,42.36,.78,3.5],   // Boston
+  [-75.16,39.95,.82,3.8],   // Philadelphia
+  [-77.04,38.91,.85,4.0],   // Washington DC
+  [-80.19,25.77,.75,3.5],   // Miami
+  [-84.39,33.75,.80,3.8],   // Atlanta
+  [-87.63,41.88,.85,4.2],   // Chicago
+  [-93.26,44.98,.72,3.2],   // Minneapolis
+  [-95.37,29.76,.82,4.0],   // Houston
+  [-97.33,32.75,.80,3.8],   // Dallas
+  [-90.07,29.95,.75,3.5],   // New Orleans
+  [-104.99,39.74,.75,3.5],  // Denver
+  [-112.07,33.45,.78,3.8],  // Phoenix
+  [-115.14,36.17,.88,4.2],  // Las Vegas
+  [-122.33,47.61,.80,3.8],  // Seattle
+  [-122.42,37.77,.85,4.0],  // San Francisco
+  [-123.12,49.28,.70,3.2],  // Vancouver
+  [-79.39,43.65,.75,3.5],   // Toronto
+  [-73.57,45.50,.75,3.5],   // Montreal
+  [-99.13,19.43,.88,4.2],   // Mexico City
+  [-66.10,18.47,.65,3.0],   // San Juan
+  // ── South America ──────────────────────────────────────────
+  [-46.63,-23.55,.92,4.5],  // São Paulo
+  [-43.17,-22.90,.82,4.0],  // Rio de Janeiro
+  [-58.37,-34.61,.78,3.8],  // Buenos Aires
+  [-70.67,-33.45,.72,3.5],  // Santiago
+  [-77.03,-12.05,.70,3.2],  // Lima
+  [-74.08,4.71,.68,3.0],    // Bogotá
+  [-66.92,10.48,.65,3.0],   // Caracas
+  [-47.93,-15.78,.68,3.2],  // Brasília
+  [-51.23,-30.03,.65,3.0],  // Porto Alegre
+  [-79.90,-2.17,.60,2.8],   // Guayaquil
+  // ── Europe ─────────────────────────────────────────────────
+  [-0.12,51.51,1.0,5.5],    // London
+  [-3.70,40.42,.82,4.0],    // Madrid
+  [-9.14,38.71,.72,3.2],    // Lisbon
+  [2.35,48.85,.92,4.5],     // Paris
+  [4.90,52.37,.75,3.5],     // Amsterdam
+  [3.22,50.83,.70,3.2],     // Brussels
+  [8.68,50.11,.78,3.8],     // Frankfurt
+  [13.38,52.52,.82,4.0],    // Berlin
+  [18.07,59.33,.68,3.0],    // Stockholm
+  [10.75,59.91,.65,3.0],    // Oslo
+  [12.57,55.68,.65,3.0],    // Copenhagen
+  [25.00,60.17,.65,3.0],    // Helsinki
+  [24.94,60.16,.65,2.8],    // Helsinki
+  [14.44,50.08,.72,3.2],    // Prague
+  [16.37,48.21,.72,3.2],    // Vienna
+  [19.04,47.50,.70,3.2],    // Budapest
+  [21.01,52.23,.72,3.2],    // Warsaw
+  [23.73,37.97,.72,3.2],    // Athens
+  [12.49,41.89,.80,3.8],    // Rome
+  [11.57,48.14,.78,3.8],    // Munich
+  [9.19,45.46,.75,3.5],     // Milan
+  [2.17,41.38,.75,3.5],     // Barcelona
+  [28.95,41.01,.82,4.0],    // Istanbul
+  [30.52,50.45,.75,3.5],    // Kyiv
+  [37.62,55.75,.92,4.5],    // Moscow
+  [44.00,56.33,.65,3.0],    // Nizhny Novgorod
+  [60.60,56.85,.62,2.8],    // Yekaterinburg
+  [82.93,55.02,.62,2.8],    // Novosibirsk
+  [104.28,52.29,.60,2.8],   // Irkutsk
+  [131.89,43.13,.65,3.0],   // Vladivostok
+  // ── Africa ─────────────────────────────────────────────────
+  [31.24,30.06,.82,4.0],    // Cairo
+  [32.58,0.32,.60,2.8],     // Kampala
+  [36.82,-1.29,.62,3.0],    // Nairobi
+  [39.27,-6.80,.60,2.8],    // Dar es Salaam
+  [28.04,-26.20,.68,3.2],   // Johannesburg
+  [18.42,-33.93,.65,3.0],   // Cape Town
+  [31.03,-29.87,.60,2.8],   // Durban
+  [2.35,6.37,.65,3.0],      // Cotonou
+  [13.51,2.11,.60,2.8],     // Yaoundé
+  [15.32,-4.33,.62,3.0],    // Kinshasa
+  [32.53,15.55,.60,2.8],    // Khartoum
+  [38.74,9.02,.62,3.0],     // Addis Ababa
+  [-17.45,14.69,.60,2.8],   // Dakar
+  [-1.55,6.84,.62,3.0],     // Accra
+  [7.40,9.06,.62,3.0],      // Abuja
+  [3.38,6.45,.65,3.2],      // Lagos
+  [-4.02,5.35,.62,3.0],     // Abidjan
+  [29.36,-3.38,.55,2.5],    // Bujumbura
+  // ── Middle East ────────────────────────────────────────────
+  [55.30,25.20,.92,4.5],    // Dubai
+  [51.53,25.29,.82,4.0],    // Doha
+  [50.59,26.22,.78,3.8],    // Manama
+  [39.83,21.42,.72,3.5],    // Jeddah
+  [46.68,24.69,.80,4.0],    // Riyadh
+  [44.38,33.34,.68,3.2],    // Baghdad
+  [51.42,35.69,.72,3.5],    // Tehran
+  [35.22,31.77,.70,3.2],    // Jerusalem/Tel Aviv
+  [36.29,33.51,.65,3.0],    // Damascus
+  [35.49,33.89,.65,3.0],    // Beirut
+  [35.92,31.95,.68,3.2],    // Amman
+  [58.59,23.61,.65,3.0],    // Muscat
+  [45.34,2.05,.55,2.5],     // Mogadishu
+  // ── South Asia ─────────────────────────────────────────────
+  [67.01,24.86,.72,3.5],    // Karachi
+  [72.83,18.96,.90,4.5],    // Mumbai
+  [77.21,28.61,1.0,5.0],    // Delhi
+  [72.58,23.03,.75,3.5],    // Ahmedabad
+  [78.49,17.38,.78,3.8],    // Hyderabad
+  [80.27,13.08,.82,3.8],    // Chennai
+  [80.00,12.97,.75,3.5],    // Chennai suburbs
+  [88.36,22.57,.82,4.0],    // Kolkata
+  [85.31,23.35,.65,3.0],    // Ranchi
+  [72.82,18.97,.82,4.0],    // Mumbai metro
+  [76.95,8.52,.60,2.8],     // Thiruvananthapuram
+  [79.83,10.79,.62,3.0],    // Tiruchirappalli
+  [78.12,9.92,.60,2.8],     // Madurai
+  [77.59,12.98,.78,3.8],    // Bengaluru
+  [77.00,11.01,.62,3.0],    // Coimbatore
+  [80.30,16.31,.62,3.0],    // Vijayawada
+  [83.00,17.68,.62,3.0],    // Visakhapatnam
+  [75.85,22.72,.65,3.0],    // Indore
+  [73.87,18.52,.72,3.5],    // Pune
+  [81.62,21.25,.65,3.0],    // Raipur
+  [85.83,20.27,.65,3.0],    // Bhubaneswar
+  [86.10,23.67,.62,3.0],    // Dhanbad
+  [91.74,26.14,.65,3.0],    // Guwahati
+  [90.41,23.72,.78,3.8],    // Dhaka
+  [79.97,6.92,.62,3.0],     // Colombo
+  [85.31,27.70,.62,3.0],    // Kathmandu
+  [66.97,24.86,.72,3.5],    // Karachi
+  // ── Southeast Asia ─────────────────────────────────────────
+  [100.52,13.75,.82,4.0],   // Bangkok
+  [103.82,1.35,.92,4.5],    // Singapore
+  [105.83,21.03,.75,3.5],   // Hanoi
+  [106.66,10.82,.78,3.8],   // Ho Chi Minh City
+  [106.84,-6.21,.80,4.0],   // Jakarta
+  [107.60,-6.93,.65,3.0],   // Bandung
+  [110.37,-7.80,.65,3.0],   // Semarang
+  [112.75,-7.25,.70,3.2],   // Surabaya
+  [96.16,16.87,.68,3.2],    // Yangon
+  [101.69,3.14,.72,3.5],    // Kuala Lumpur
+  [114.09,22.40,.85,4.2],   // Hong Kong
+  [120.97,14.60,.72,3.5],   // Manila
+  [123.91,10.32,.62,3.0],   // Cebu
+  [104.92,11.55,.65,3.0],   // Phnom Penh
+  [102.60,17.97,.60,2.8],   // Vientiane
+  // ── East Asia ──────────────────────────────────────────────
+  [116.39,39.91,1.0,5.5],   // Beijing
+  [121.47,31.23,1.0,5.2],   // Shanghai
+  [114.31,30.52,.85,4.2],   // Wuhan
+  [108.95,34.27,.82,4.0],   // Xi'an
+  [113.27,23.13,.88,4.5],   // Guangzhou
+  [113.54,22.20,.85,4.2],   // Shenzhen
+  [104.06,30.67,.82,4.0],   // Chengdu
+  [106.55,29.56,.80,3.8],   // Chongqing
+  [117.19,34.27,.72,3.5],   // Xuzhou
+  [120.15,30.25,.75,3.5],   // Hangzhou
+  [118.78,32.04,.78,3.8],   // Nanjing
+  [112.94,28.23,.72,3.5],   // Changsha
+  [126.98,37.57,.88,4.2],   // Seoul
+  [129.08,35.18,.75,3.5],   // Busan
+  [135.50,34.69,.88,4.2],   // Osaka
+  [130.40,33.59,.75,3.5],   // Fukuoka
+  [141.35,43.06,.70,3.2],   // Sapporo
+  [139.69,35.68,1.0,5.5],   // Tokyo
+  [140.87,38.27,.65,3.0],   // Sendai
+  [121.52,25.04,.78,3.8],   // Taipei
+  [125.73,43.84,.65,3.0],   // Changchun
+  [123.43,41.79,.68,3.2],   // Shenyang
+  // ── Oceania ────────────────────────────────────────────────
+  [151.21,-33.87,.82,4.0],  // Sydney
+  [144.96,-37.81,.72,3.5],  // Melbourne
+  [153.03,-27.47,.68,3.2],  // Brisbane
+  [115.86,-31.95,.65,3.0],  // Perth
+  [138.60,-34.93,.62,3.0],  // Adelaide
+  [174.76,-36.86,.72,3.2],  // Auckland
+  [172.64,-43.53,.60,2.8],  // Christchurch
+  [147.33,-42.88,.55,2.5],  // Hobart
+];
+
+// ═══════════════════════════════════════════
+// CANVAS SETUP
+// ═══════════════════════════════════════════
+const W  = window.innerWidth;
+const H  = window.innerHeight;
+const PR = Math.min(window.devicePixelRatio || 1, 2);
+
+function mkCtx(id) {
+  const el = document.getElementById(id);
+  el.width  = Math.round(W * PR);
+  el.height = Math.round(H * PR);
+  el.style.width  = W + 'px';
+  el.style.height = H + 'px';
+  const ctx = el.getContext('2d');
+  ctx.scale(PR, PR);
+  return ctx;
+}
+const ctxStar = mkCtx('c-stars');
+const ctxMap  = mkCtx('c-map');
+const ctxLgt  = mkCtx('c-lights');
+
+// ═══════════════════════════════════════════
+// D3 PROJECTION
+// ═══════════════════════════════════════════
+const projection = d3.geoNaturalEarth1()
+  .scale(W / 6.28)
+  .translate([W / 2, H / 2]);
+
+// Two separate path generators: one for map canvas, one for off-screen
+let geoPathMap;
+
+// ═══════════════════════════════════════════
+// SOLAR MATH
+// ═══════════════════════════════════════════
+const D2R = Math.PI / 180;
+const R2D = 180 / Math.PI;
+
+function getSun(date) {
+  const y0  = new Date(date.getFullYear(), 0, 0);
+  const doy = Math.floor((date - y0) / 864e5);
+  const B   = D2R * (360 / 365) * (doy - 81);
+  const dec = 23.45 * Math.sin(B);
+  const eot = 9.87*Math.sin(2*B) - 7.53*Math.cos(B) - 1.5*Math.sin(B);
+  const utcH = date.getUTCHours() + date.getUTCMinutes()/60 + date.getUTCSeconds()/3600;
+  let sLon = -(utcH - 12) * 15 + eot / 4;
+  while (sLon >  180) sLon -= 360;
+  while (sLon < -180) sLon += 360;
+  return { dec, sLon };
+}
+
+function sunAlt(lon, lat, dec, sLon) {
+  const Ha = D2R * (lon - sLon);
+  const φ  = D2R * lat;
+  const δ  = D2R * dec;
+  return R2D * Math.asin(Math.max(-1, Math.min(1,
+    Math.sin(φ)*Math.sin(δ) + Math.cos(φ)*Math.cos(δ)*Math.cos(Ha)
+  )));
+}
+
+// Returns state string and also a 0-1 blend factor for the map color
+// state: 'sd'=day, 'se'=evening, 'sm'=morning, 'sn'=night
+function skyState(lon, lat, dec, sLon) {
+  const a = sunAlt(lon, lat, dec, sLon);
+  if (a > 30)  return 'sd';
+  if (a < -14) return 'sn';
+  let ha = lon - sLon;
+  while (ha >  180) ha -= 360;
+  while (ha < -180) ha += 360;
+  return ha > 0 ? 'se' : 'sm';
+}
+
+// Get RGBA land color for a given sun altitude + eve/morn direction
+// This is the KEY function — land color matches the state color scheme
+function landColor(alt, isEve) {
+  // alt >= 30: bright green (day)
+  // alt 0..30: transition green → orange(eve) or green → amber(morn)
+  // alt -14..0: deep orange/amber twilight
+  // alt < -14: very dark navy (night)
+
+  if (alt >= 30) {
+    // Full day — bright green land
+    return [30, 120, 65, 255];
+  }
+  if (alt >= 0) {
+    // Golden hour / low sun: 0° = deepest orange/amber, 30° = green
+    const t = alt / 30; // 0 at horizon, 1 at 30°
+    if (isEve) {
+      // Green → orange as sun lowers
+      const r = Math.round(30  + (210-30)  * (1-t));
+      const g = Math.round(120 + (80-120)  * (1-t));
+      const b = Math.round(65  + (10-65)   * (1-t));
+      return [r, g, b, 255];
+    } else {
+      // Green → amber as sun rises
+      const r = Math.round(30  + (200-30)  * (1-t));
+      const g = Math.round(120 + (120-120) * (1-t));
+      const b = Math.round(65  + (15-65)   * (1-t));
+      return [r, g, b, 255];
+    }
+  }
+  if (alt >= -14) {
+    // Civil/nautical twilight: rich orange/amber fading to dark
+    const t = (alt + 14) / 14; // 0 at -14°, 1 at 0°
+    if (isEve) {
+      const r = Math.round(60  + (210-60)  * t);
+      const g = Math.round(15  + (80-15)   * t);
+      const b = Math.round(8   + (10-8)    * t);
+      return [r, g, b, 255];
+    } else {
+      const r = Math.round(55  + (200-55)  * t);
+      const g = Math.round(22  + (120-22)  * t);
+      const b = Math.round(8   + (15-8)    * t);
+      return [r, g, b, 255];
+    }
+  }
+  // Full night — very dark navy/teal land
+  return [8, 22, 45, 255];
+}
+
+// ═══════════════════════════════════════════
+// STAR FIELD (drawn once)
+// ═══════════════════════════════════════════
+function drawStars() {
+  const c = ctxStar;
+  c.fillStyle = '#040d18';
+  c.fillRect(0, 0, W, H);
+  let s = 0x9e3779b9;
+  const rng = () => { s = (Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; };
+  for (let i = 0; i < 900; i++) {
+    const x=rng()*W, y=rng()*H, r=rng()*1.1+0.1, a=rng()*.5+.1;
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2);
+    c.fillStyle=`rgba(200,220,255,${a})`; c.fill();
+  }
+}
+
+// ═══════════════════════════════════════════
+// WORLD DATA (stored for redraws)
+// ═══════════════════════════════════════════
+let worldData = null;
+
+// ═══════════════════════════════════════════
+// DRAW MAP — called every minute with solar data
+// Land pixels are colored per their sky state
+// Approach: draw ocean, draw per-pixel colored land via ImageData,
+// then overlay crisp coastlines using d3 path
+// ═══════════════════════════════════════════
+function drawMap(date) {
+  if (!worldData) return;
+  if (!W || !H) return; // guard: canvas not sized yet
+  const c = ctxMap;
+  c.clearRect(0, 0, W, H);
+
+  const { dec, sLon } = getSun(date);
+  const land    = topojson.feature(worldData, worldData.objects.land);
+  const borders = topojson.mesh(worldData, worldData.objects.countries, (a,b) => a !== b);
+  const sphere  = { type: 'Sphere' };
+  const grat    = d3.geoGraticule()();
+
+  geoPathMap = d3.geoPath().projection(projection).context(c);
+
+  // ── 1. Ocean background ──────────────────────────────────────
+  c.beginPath();
+  geoPathMap(sphere);
+  const og = c.createRadialGradient(W/2,H/2,H*.05,W/2,H/2,H*.7);
+  og.addColorStop(0,   '#071c30');
+  og.addColorStop(0.6, '#051525');
+  og.addColorStop(1,   '#03101c');
+  c.fillStyle = og;
+  c.fill();
+
+  // ── 2. Graticule ─────────────────────────────────────────────
+  c.beginPath();
+  geoPathMap(grat);
+  c.strokeStyle = 'rgba(18,55,95,0.28)';
+  c.lineWidth = 0.4;
+  c.stroke();
+
+  // ── 3. Per-pixel land coloring ───────────────────────────────
+  // Strategy: build an offscreen canvas with land mask,
+  // then colorize each land pixel based on its lon/lat sky state
+
+  // 3a. Build a land-mask canvas at reduced resolution for speed
+  const SCALE = 2; // sample every 2px
+  const MW = Math.ceil(W / SCALE);
+  const MH = Math.ceil(H / SCALE);
+
+  const maskCanvas = document.createElement('canvas');
+  maskCanvas.width  = MW;
+  maskCanvas.height = MH;
+  const mCtx = maskCanvas.getContext('2d');
+
+  // Scale projection to mask resolution
+  const maskProj = d3.geoNaturalEarth1()
+    .scale((W / SCALE) / 6.28)
+    .translate([MW / 2, MH / 2]);
+  const maskPath = d3.geoPath().projection(maskProj).context(mCtx);
+
+  // Draw land as white on black
+  mCtx.fillStyle = '#000';
+  mCtx.fillRect(0, 0, MW, MH);
+  mCtx.beginPath();
+  maskPath(land);
+  mCtx.fillStyle = '#fff';
+  mCtx.fill();
+
+  // Get mask pixel data
+  const maskData = mCtx.getImageData(0, 0, MW, MH).data;
+
+  // 3b. Build color image at same scale
+  const colorImg = mCtx.createImageData(MW, MH);
+  const cd = colorImg.data;
+
+  // Precompute inverse projection for each mask pixel
+  const maskProjInv = maskProj.invert.bind(maskProj);
+
+  for (let my = 0; my < MH; my++) {
+    for (let mx = 0; mx < MW; mx++) {
+      const idx4 = (my * MW + mx) * 4;
+      // Check if this pixel is land (white in mask)
+      if (maskData[idx4] < 128) continue; // ocean — skip
+
+      // Get lon/lat for this pixel
+      const coords = maskProjInv([mx, my]);
+      if (!coords || isNaN(coords[0])) continue;
+      const [lon, lat] = coords;
+
+      // Compute sun altitude and hour angle
+      const alt = sunAlt(lon, lat, dec, sLon);
+      let ha = lon - sLon;
+      while (ha >  180) ha -= 360;
+      while (ha < -180) ha += 360;
+      const isEve = ha > 0;
+
+      const [r, g, b, a] = landColor(alt, isEve);
+      cd[idx4]   = r;
+      cd[idx4+1] = g;
+      cd[idx4+2] = b;
+      cd[idx4+3] = a;
+    }
+  }
+  mCtx.putImageData(colorImg, 0, 0);
+
+  // 3c. Draw the colored land onto the main canvas (scaled up)
+  c.save();
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(maskCanvas, 0, 0, W, H);
+  c.restore();
+
+  // ── 4. Country borders ────────────────────────────────────────
+  c.beginPath();
+  geoPathMap(borders);
+  c.strokeStyle = 'rgba(0,0,0,0.35)';
+  c.lineWidth = 0.5;
+  c.stroke();
+
+  // ── 5. Coastlines — crisp, drawn on top ───────────────────────
+  c.beginPath();
+  geoPathMap(land);
+  c.strokeStyle = 'rgba(80,200,140,0.75)';
+  c.lineWidth = 0.9;
+  c.stroke();
+
+  // ── 6. Sphere border ──────────────────────────────────────────
+  c.beginPath();
+  geoPathMap(sphere);
+  c.strokeStyle = 'rgba(30,90,150,0.45)';
+  c.lineWidth = 1.5;
+  c.stroke();
+
+  // ── 7. Sun position dot ───────────────────────────────────────
+  const sunPt = projection([sLon, dec]);
+  if (sunPt && !isNaN(sunPt[0])) {
+    const [sx, sy] = sunPt;
+    const sg = c.createRadialGradient(sx,sy,0,sx,sy,30);
+    sg.addColorStop(0,'rgba(255,248,140,.30)');
+    sg.addColorStop(.45,'rgba(255,210,70,.12)');
+    sg.addColorStop(1,'rgba(255,160,0,0)');
+    c.beginPath(); c.arc(sx,sy,30,0,Math.PI*2); c.fillStyle=sg; c.fill();
+    c.beginPath(); c.arc(sx,sy,3.5,0,Math.PI*2);
+    c.fillStyle='rgba(255,250,150,.95)'; c.fill();
+  }
+
+  // ── 8. Update sun badge ───────────────────────────────────────
+  const sp = document.getElementById('sun-pos');
+  if (sp) sp.textContent =
+    (dec>=0?'N':'S')+Math.abs(dec).toFixed(1)+'°  '+
+    (sLon>=0?'E':'W')+Math.abs(sLon).toFixed(1)+'°';
+}
+
+// ═══════════════════════════════════════════
+// CITY LIGHTS — only where sun is below horizon
+// Masked to night/twilight areas only
+// ═══════════════════════════════════════════
+function drawLights(date) {
+  if (!W || !H) return; // guard: canvas not sized yet
+  const c = ctxLgt;
+  c.clearRect(0, 0, W, H);
+  const { dec, sLon } = getSun(date);
+
+  LIGHTS.forEach(([lon, lat, intens, gs]) => {
+    const a = sunAlt(lon, lat, dec, sLon);
+    // Strict: zero at or above horizon
+    if (a >= 0) return;
+    const op = a < -18 ? intens : intens * (-a / 18);
+    if (op < 0.02) return;
+
+    const pt = projection([lon, lat]);
+    if (!pt || isNaN(pt[0])) return;
+    const [x, y] = pt;
+    const r = gs * (1.8 + op * 3.5);
+
+    const cg = c.createRadialGradient(x,y,0,x,y,r);
+    cg.addColorStop(0,   `rgba(255,240,145,${(op*.92).toFixed(3)})`);
+    cg.addColorStop(.12, `rgba(255,212,82,${(op*.68).toFixed(3)})`);
+    cg.addColorStop(.35, `rgba(255,162,35,${(op*.28).toFixed(3)})`);
+    cg.addColorStop(.65, `rgba(230,95,8,${(op*.08).toFixed(3)})`);
+    cg.addColorStop(1,   'rgba(155,38,0,0)');
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=cg; c.fill();
+
+    const ir = c.createRadialGradient(x,y,0,x,y,gs*.8);
+    ir.addColorStop(0,  `rgba(255,254,225,${op.toFixed(3)})`);
+    ir.addColorStop(.5, `rgba(255,234,112,${(op*.82).toFixed(3)})`);
+    ir.addColorStop(1,  'rgba(255,185,45,0)');
+    c.beginPath(); c.arc(x,y,gs*.8,0,Math.PI*2); c.fillStyle=ir; c.fill();
+
+    c.beginPath(); c.arc(x,y,Math.max(.8,gs*.32),0,Math.PI*2);
+    c.fillStyle=`rgba(255,255,235,${op.toFixed(3)})`; c.fill();
+  });
+
+  // No canvas pixel-reading needed — sunAlt already gates every light above.
+  // lights only reach this point when alt < 0 (strictly below horizon).
+}
+
+// ═══════════════════════════════════════════
+// SEVEN-SEGMENT DISPLAY ENGINE
+// Draws authentic LED-style digits on canvas
+// ═══════════════════════════════════════════
+
+// Segment definitions for digits 0-9 and colon
+// 7 segments: a(top) b(top-right) c(bot-right) d(bot) e(bot-left) f(top-left) g(mid)
+// bit order:  a  b  c  d  e  f  g
+const SEG_MAP = {
+  '0': [1,1,1,1,1,1,0],
+  '1': [0,1,1,0,0,0,0],
+  '2': [1,1,0,1,1,0,1],
+  '3': [1,1,1,1,0,0,1],
+  '4': [0,1,1,0,0,1,1],
+  '5': [1,0,1,1,0,1,1],
+  '6': [1,0,1,1,1,1,1],
+  '7': [1,1,1,0,0,0,0],
+  '8': [1,1,1,1,1,1,1],
+  '9': [1,1,1,1,0,1,1],
+  '-': [0,0,0,0,0,0,1],
+  ' ': [0,0,0,0,0,0,0],
+};
+
+// Segment configs — sizes scale with viewport width
+// Base unit: 1vw = window.innerWidth / 100
+// State colors for Chennai seven-segment display
+const STATE_COLORS = {
+  sd: { onCol:'rgba(80,230,120,1)',   onGlow:'rgba(60,200,90,0.9)',   offCol:'rgba(60,180,90,0.07)'  }, // day → green
+  se: { onCol:'rgba(255,110,20,1)',   onGlow:'rgba(255,80,10,0.9)',   offCol:'rgba(255,80,10,0.07)'  }, // evening → orange
+  sm: { onCol:'rgba(255,175,30,1)',   onGlow:'rgba(255,145,15,0.9)',  offCol:'rgba(255,140,15,0.07)' }, // morning → amber
+  sn: { onCol:'rgba(100,170,255,1)',  onGlow:'rgba(70,140,255,0.9)',  offCol:'rgba(70,130,255,0.07)' }, // night → blue
+};
+
+function makeCfg(chennaiState) {
+  const vw = window.innerWidth / 100;
+  const sc = STATE_COLORS[chennaiState] || STATE_COLORS['sn'];
+  return {
+    chennai: {
+      dw:   Math.round(vw * 2.2),
+      dh:   Math.round(vw * 4.0),
+      sw:   Math.max(4, Math.round(vw * 0.38)),
+      gap:  Math.max(4, Math.round(vw * 0.45)),
+      cgap: Math.max(8, Math.round(vw * 0.85)),
+      onCol:  sc.onCol,
+      onGlow: sc.onGlow,
+      offCol: sc.offCol,
+      PR: Math.min(window.devicePixelRatio||1,2),
+    },
+    utc: {
+      dw:   Math.round(vw * 1.1),   // ~21px at 1920
+      dh:   Math.round(vw * 2.0),   // ~38px at 1920
+      sw:   Math.max(2, Math.round(vw * 0.19)),
+      gap:  Math.max(3, Math.round(vw * 0.22)),
+      cgap: Math.max(5, Math.round(vw * 0.44)),
+      onCol:  'rgba(130,210,255,1)',
+      onGlow: 'rgba(80,180,255,0.85)',
+      offCol: 'rgba(100,180,255,0.07)',
+      PR: Math.min(window.devicePixelRatio||1,2),
+    }
+  };
+}
+let SEG_CONFIG = makeCfg("sn"); // default night until first tick
+
+// Draw one segment (a bevelled bar)
+function drawSegment(ctx, x, y, w, h, horiz, on, cfg) {
+  const s = cfg.sw;
+  const col = on ? cfg.onCol : cfg.offCol;
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  if (horiz) {
+    // horizontal segment: trapezoid pointing inward on both ends
+    const k = s * 0.55;
+    ctx.moveTo(x + k,     y);
+    ctx.lineTo(x + w - k, y);
+    ctx.lineTo(x + w,     y + h/2);
+    ctx.lineTo(x + w - k, y + h);
+    ctx.lineTo(x + k,     y + h);
+    ctx.lineTo(x,         y + h/2);
+  } else {
+    // vertical segment
+    const k = s * 0.55;
+    ctx.moveTo(x,         y + k);
+    ctx.lineTo(x + w/2,   y);
+    ctx.lineTo(x + w,     y + k);
+    ctx.lineTo(x + w,     y + h - k);
+    ctx.lineTo(x + w/2,   y + h);
+    ctx.lineTo(x,         y + h - k);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Glow on active segments
+  if (on) {
+    ctx.shadowColor = cfg.onGlow;
+    ctx.shadowBlur  = s * 2.2;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// Draw one digit at position (ox, oy)
+function drawDigit(ctx, ox, oy, digit, cfg) {
+  const segs = SEG_MAP[digit] || SEG_MAP[' '];
+  const dw = cfg.dw, dh = cfg.dh, sw = cfg.sw;
+  const iw = dw - sw * 2; // inner width
+  const ih = (dh - sw * 3) / 2; // half inner height
+
+  // a: top horizontal
+  drawSegment(ctx, ox + sw, oy,           iw, sw, true,  !!segs[0], cfg);
+  // b: top-right vertical
+  drawSegment(ctx, ox + sw + iw, oy + sw, sw, ih, false, !!segs[1], cfg);
+  // c: bot-right vertical
+  drawSegment(ctx, ox + sw + iw, oy + sw * 2 + ih, sw, ih, false, !!segs[2], cfg);
+  // d: bottom horizontal
+  drawSegment(ctx, ox + sw, oy + sw * 2 + ih * 2, iw, sw, true, !!segs[3], cfg);
+  // e: bot-left vertical
+  drawSegment(ctx, ox, oy + sw * 2 + ih, sw, ih, false, !!segs[4], cfg);
+  // f: top-left vertical
+  drawSegment(ctx, ox, oy + sw, sw, ih, false, !!segs[5], cfg);
+  // g: middle horizontal
+  drawSegment(ctx, ox + sw, oy + sw + ih, iw, sw, true, !!segs[6], cfg);
+}
+
+// Draw two colon dots at (cx, oy)
+function drawColon(ctx, cx, oy, cfg, lit) {
+  const dh = cfg.dh, sw = cfg.sw, cw = cfg.cgap;
+  const ih = (dh - sw * 3) / 2;
+  const r  = sw * 0.75;
+  const col = lit ? cfg.onCol : cfg.offCol;
+
+  // Upper dot
+  ctx.beginPath();
+  ctx.arc(cx + cw/2, oy + sw + ih/2, r, 0, Math.PI*2);
+  ctx.fillStyle = col;
+  ctx.fill();
+  if (lit) { ctx.shadowColor = cfg.onGlow; ctx.shadowBlur = sw*2; ctx.fill(); ctx.shadowBlur=0; }
+
+  // Lower dot
+  ctx.beginPath();
+  ctx.arc(cx + cw/2, oy + sw*2 + ih + ih/2, r, 0, Math.PI*2);
+  ctx.fillStyle = col;
+  ctx.fill();
+  if (lit) { ctx.shadowColor = cfg.onGlow; ctx.shadowBlur = sw*2; ctx.fill(); ctx.shadowBlur=0; }
+}
+
+// Compute total canvas width for a time string "HH:MM:SS"
+function segWidth(timeStr, cfg) {
+  let w = 0;
+  for (const ch of timeStr) {
+    if (ch === ':') w += cfg.cgap + cfg.gap;
+    else            w += cfg.dw   + cfg.gap;
+  }
+  return w - cfg.gap;
+}
+
+// Main entry: draw timeStr onto canvas element with id=canvasId
+function drawSeg(canvasId, timeStr, type) {
+  const cfg = SEG_CONFIG[type];
+  const el  = document.getElementById(canvasId);
+  if (!el) return;
+  const PR  = cfg.PR;
+  const totalW = segWidth(timeStr, cfg);
+  const totalH = cfg.dh;
+  el.width  = Math.round(totalW * PR);
+  el.height = Math.round(totalH * PR);
+  el.style.width  = totalW + 'px';
+  el.style.height = totalH + 'px';
+
+  const ctx = el.getContext('2d');
+  ctx.clearRect(0, 0, el.width, el.height);
+  ctx.scale(PR, PR);
+
+  // Blinking colon: blink every second using current seconds
+  const secs = new Date().getSeconds();
+  const colonLit = (secs % 2 === 0);
+
+  let x = 0;
+  for (const ch of timeStr) {
+    if (ch === ':') {
+      drawColon(ctx, x, 0, cfg, colonLit);
+      x += cfg.cgap + cfg.gap;
+    } else {
+      drawDigit(ctx, x, 0, ch, cfg);
+      x += cfg.dw + cfg.gap;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// UI CLOCKS
+// ═══════════════════════════════════════════
+const Z2   = n => String(n).padStart(2,'0');
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function fmtTime(date, tz) {
+  try { return new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:tz}).format(date); }
+  catch { return '--:--:--'; }
+}
+function fmtDate(date, tz) {
+  try {
+    const p = new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:tz}).formatToParts(date);
+    const m={}; p.forEach(x=>m[x.type]=x.value);
+    return `${m.weekday}, ${m.day} ${m.month} ${m.year}`;
+  } catch { return ''; }
+}
+function fmtOff(date, tz) {
+  try {
+    const p = new Intl.DateTimeFormat('en',{timeZone:tz,timeZoneName:'shortOffset'}).formatToParts(date);
+    return (p.find(x=>x.type==='timeZoneName')||{value:''}).value;
+  } catch { return ''; }
+}
+
+let cards = {};
+function initClocks() {
+  const bar = document.getElementById('clocks-bar');
+  bar.innerHTML = ''; cards = {};
+
+  // Split cities into two balanced rows
+  const mid = Math.ceil(CITIES.length / 2);
+  const rows = [CITIES.slice(0, mid), CITIES.slice(mid)];
+
+  rows.forEach(rowCities => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'clock-row';
+    rowCities.forEach(city => {
+      const id = 'ck_'+city.name.replace(/[^a-z]/gi,'_');
+      const div = document.createElement('div');
+      div.id = id; div.className = 'clock-card sn';
+      // Fixed inner layout — all elements have fixed dimensions
+      div.innerHTML = `
+        <div class="c-city">${city.name}</div>
+        <div class="c-time" id="${id}_t">--:--:--</div>
+        <div class="c-offset" id="${id}_o"></div>
+        <div class="c-icon" id="${id}_i">🌙</div>`;
+      rowDiv.appendChild(div);
+      cards[city.name] = {id, city};
+    });
+    bar.appendChild(rowDiv);
+  });
+}
+
+function updateUI(date) {
+  const {dec,sLon} = getSun(date);
+  // Use user's local timezone detected from OS
+  const localState = skyState(LOCAL_LON, LOCAL_LAT, dec, sLon);
+  SEG_CONFIG = makeCfg(localState);
+
+  drawSeg('seg-chennai', fmtTime(date, LOCAL_TZ), 'chennai');
+  drawSeg('seg-utc',     `${Z2(date.getUTCHours())}:${Z2(date.getUTCMinutes())}:${Z2(date.getUTCSeconds())}`, 'utc');
+  document.getElementById('chennai-date').textContent = fmtDate(date, LOCAL_TZ);
+
+  // Header border color matches local sky state
+  const headerEl = document.getElementById('header');
+  if (headerEl) {
+    const borderColors = {sd:'rgba(80,230,120,0.20)',se:'rgba(255,110,20,0.22)',sm:'rgba(255,175,30,0.20)',sn:'rgba(100,170,255,0.18)'};
+    headerEl.style.borderColor = borderColors[localState] || borderColors.sn;
+  }
+  Object.values(cards).forEach(({id,city}) => {
+    const st = skyState(city.lon,city.lat,dec,sLon);
+    const card=document.getElementById(id); if(card)card.className=`clock-card ${st}`;
+    const te=document.getElementById(id+'_t'); if(te)te.textContent=fmtTime(date,city.tz);
+    const oe=document.getElementById(id+'_o'); if(oe)oe.textContent=fmtOff(date,city.tz);
+    const ie=document.getElementById(id+'_i');
+    if(ie)ie.textContent=st==='sd'?'☀️':st==='se'?'🌇':st==='sm'?'🌄':'🌙';
+  });
+}
+
+// ═══════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════
+let lastDraw = 0;
+
+function setLoad(pct, msg) {
+  const b = document.getElementById('load-bar');
+  const s = document.getElementById('load-status');
+  if(b) b.style.width = pct+'%';
+  if(s) s.textContent = msg;
+}
+
+function tick() {
+  const now = new Date();
+  // Redraw map + lights every 60 seconds
+  if (now - lastDraw > 10000) {
+    drawMap(now);
+    drawLights(now);
+    lastDraw = now;
+  }
+  updateUI(now);
+  setTimeout(tick, 1000);
+}
+
+async function init() {
+  setLoad(10, 'Drawing stars…');
+  drawStars();
+  initClocks();
+  updateUI(new Date());
+  setLoad(30, 'Fetching world map data…');
+
+  try {
+    const resp = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+    setLoad(65, 'Parsing…');
+    worldData = await resp.json();
+    setLoad(85, 'Rendering colored map…');
+    const now = new Date();
+    drawMap(now);
+    drawLights(now);
+    lastDraw = now;
+    setLoad(100, 'Done');
+    const el = document.getElementById('loading');
+    if(el){ el.style.opacity='0'; setTimeout(()=>el.remove(),800); }
+  } catch(err) {
+    console.error('Map load error:', err);
+    setLoad(100, '⚠ Map failed — check internet connection');
+    const now = new Date();
+    drawMap(now);
+    drawLights(now);
+    lastDraw = now;
+  }
+  tick();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    const now = new Date();
+    drawMap(now); drawLights(now); lastDraw = now;
+  }
+});
+window.addEventListener('resize', () => location.reload());
+init();
+</script>
+</body>
+</html>
