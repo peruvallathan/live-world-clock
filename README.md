@@ -2,7 +2,7 @@
 
 A fully self-contained HTML5 desktop wallpaper featuring a real-time world map with per-pixel day/night/evening/morning coloring, 176 city lights that activate strictly based on sun altitude, a seven-segment LED clock, and 12 live timezone cards — all in a single file with zero backend and zero build step.
 
-> **Vibe-coded with [Claude](https://claude.ai) in ~4 hours.**
+> **Vibe-coded with [Claude](https://claude.ai) in ~2 hours.**
 
 ---
 
